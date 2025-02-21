@@ -12,26 +12,68 @@ Rails.application.config.before_initialize do
   # アプリケーションのAWS関連設定を一元管理
   Rails.application.config.x.aws = {
     region: region,
+
     # S3設定
     s3: {
       # 環境変数から取得するか、直接バケット名を設定
       bucket: ENV.fetch('S3_BUCKET', 'your-bucket-name')
     },
+
     # RDS設定
     rds: {
       # DATABASE_URLの形式: postgresql://user:pass@endpoint:5432/dbname
       database_url: ENV.fetch('DATABASE_URL', nil)
     },
+
     # ALB設定
     alb: {
       # ALBのDNS名を設定
-      host: 'your-alb-name.ap-northeast-1.elb.amazonaws.com'
+      host: 'your-alb-name.ap-northeast-1.elb.amazonaws.com',
+      # ターゲットグループ設定
+      target_group_arn: 'arn:aws:elasticloadbalancing:ap-northeast-1:your-account-id:targetgroup/your-target-group/xxx',
+      health_check_path: '/up'  # Railsのヘルスチェックパス
     },
+
     # ECS設定
     ecs: {
+      cluster_name: 'your-cluster-name',
+      service_name: 'rails-tasks',
+      task_family: 'rails-tasks',
+      # コンテナリソース設定
       memory: 1024,    # メモリ制限（MB）
       cpu: 512,        # CPU制限（units）
-      container_port: 80
+      container_port: 80,
+      # ネットワーク設定
+      network_mode: 'awsvpc',
+      subnet_ids: ['subnet-xxx', 'subnet-yyy'],
+      security_group_ids: ['sg-zzz'],
+      assign_public_ip: true,
+      # Auto Scaling設定
+      auto_scaling: {
+        min_capacity: 1,
+        max_capacity: 2,
+        target_cpu_percent: 75
+      }
+    },
+
+    # CloudWatch設定
+    cloudwatch: {
+      log_group: '/ecs/rails-tasks',
+      log_stream_prefix: 'ecs',
+      # メトリクス設定
+      metrics: {
+        namespace: 'Rails/Application',
+        dimensions: {
+          Environment: ENV.fetch('RAILS_ENV', 'production'),
+          Service: 'rails-tasks'
+        }
+      }
+    },
+
+    # IAMロール設定
+    iam: {
+      task_role_arn: 'arn:aws:iam::your-account-id:role/ecsTaskRole',
+      execution_role_arn: 'arn:aws:iam::your-account-id:role/ecsTaskExecutionRole'
     }
   }
 
@@ -40,4 +82,15 @@ Rails.application.config.before_initialize do
   
   # Active Storageの設定更新
   Rails.application.config.active_storage.service = :amazon if Rails.env.production?
+
+  # CloudWatchメトリクスの設定
+  if Rails.env.production?
+    Rails.application.config.after_initialize do
+      Rails.logger.extend(ActiveSupport::Logger.broadcast(
+        ActiveSupport::TaggedLogging.new(
+          ActiveSupport::Logger.new(STDOUT)
+        )
+      ))
+    end
+  end
 end
