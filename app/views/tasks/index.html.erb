@@ -1,0 +1,45 @@
+<div class="task-list" data-turbo="true">
+  <h1>タスク管理</h1>
+
+  <div class="sort-options">
+    <%= link_to 'デフォルト', tasks_path, class: "btn btn-secondary #{'active' if !params[:sort]}" %>
+    <%= link_to '優先度順', tasks_path(sort: 'priority'), class: "btn btn-secondary #{'active' if params[:sort] == 'priority'}" %>
+    <%= link_to '期限順', tasks_path(sort: 'due_date'), class: "btn btn-secondary #{'active' if params[:sort] == 'due_date'}" %>
+  </div>
+
+  <div class="task-form">
+    <%= form_with(model: Task.new, local: true) do |f| %>
+      <div class="form-group">
+        <%= f.label :title, 'タイトル' %>
+        <%= f.text_field :title, class: 'form-control', required: true %>
+      </div>
+
+      <div class="form-group">
+        <%= f.label :description, '説明' %>
+        <%= f.text_area :description, class: 'form-control', rows: 3 %>
+      </div>
+
+      <div class="form-group">
+        <%= f.label :due_date, '期限' %>
+        <%= f.datetime_local_field :due_date, class: 'form-control' %>
+      </div>
+
+      <div class="form-group">
+        <%= f.label :priority, '優先度' %>
+        <%= f.select :priority, 
+          [['低', 0], ['中', 1], ['高', 2]], 
+          { selected: 1 }, 
+          { class: 'form-control' } 
+        %>
+      </div>
+
+      <%= f.submit '新規タスク作成', class: 'btn btn-primary' %>
+    <% end %>
+  </div>
+
+  <div id="tasks" data-turbo-frame="tasks">
+    <%= render 'tasks/index', tasks: @tasks %>
+  </div>
+</div>
+
+<%= turbo_frame_tag "modal" %>

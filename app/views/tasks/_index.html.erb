@@ -1,0 +1,50 @@
+<% @tasks.each do |task| %>
+  <div class="task-item <%= 'completed' if task.is_completed %>" id="task_<%= task.id %>">
+    <div class="title <%= 'completed-title' if task.is_completed %>">
+      <%= task.title %>
+    </div>
+
+    <div class="task-meta">
+      <span class="priority-badge priority-<%= task.priority_text %>">
+        <%= task.priority_text %>
+      </span>
+      
+      <% if task.due_date %>
+        <span>
+          期限: <%= l task.due_date, format: :short %>
+        </span>
+      <% end %>
+    </div>
+
+    <div class="task-actions">
+      <% if task.is_completed %>
+        <%= button_to '未完了に戻す', 
+          uncomplete_task_path(task), 
+          method: :patch,
+          class: 'btn btn-secondary',
+          form: { data: { turbo: true } }
+        %>
+      <% else %>
+        <%= button_to '完了', 
+          complete_task_path(task), 
+          method: :patch,
+          class: 'btn btn-primary',
+          form: { data: { turbo: true } }
+        %>
+      <% end %>
+
+      <%= link_to '編集', 
+        edit_task_path(task), 
+        class: 'btn btn-secondary',
+        data: { turbo_frame: 'modal' }
+      %>
+
+      <%= button_to '削除', 
+        task_path(task), 
+        method: :delete,
+        class: 'btn btn-danger',
+        form: { data: { turbo_confirm: '本当に削除しますか？', turbo: true } }
+      %>
+    </div>
+  </div>
+<% end %>

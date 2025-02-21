@@ -1,0 +1,40 @@
+# AWSサービス共通の設定
+Rails.application.config.before_initialize do
+  # リージョン設定
+  region = 'ap-northeast-1'
+
+  # AWS SDK設定
+  Aws.config.update(
+    region: region,
+    # IAMロールを使用するため、credentialsは設定不要
+  )
+
+  # アプリケーションのAWS関連設定を一元管理
+  Rails.application.config.x.aws = {
+    region: region,
+    # S3設定
+    s3: {
+      bucket: ENV.fetch('S3_BUCKET', 'test20250221-small-dev-staticfilesbucketa7a2d39b-objxxvj9fu1g')
+    },
+    # RDS設定
+    rds: {
+      database_url: ENV.fetch('DATABASE_URL', nil)
+    },
+    # ALB設定
+    alb: {
+      host: 'test20-Small-ko8b4hd77PC5-1231155485.ap-northeast-1.elb.amazonaws.com'
+    },
+    # ECS設定
+    ecs: {
+      memory: 1024,
+      cpu: 512,
+      container_port: 80
+    }
+  }
+
+  # AWS関連の設定値をRailsの各設定に反映
+  Rails.application.config.hosts << Rails.application.config.x.aws.dig(:alb, :host)
+  
+  # Active Storageの設定更新
+  Rails.application.config.active_storage.service = :amazon if Rails.env.production?
+end
