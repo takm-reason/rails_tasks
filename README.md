@@ -96,12 +96,166 @@ RAILS_LOG_LEVEL=info
 docker build -t rails_tasks .
 ```
 
-### ECSへのデプロイ
-アプリケーションはAWS ECSにデプロイされ、以下の設定が適用されます：
-- ALBによるHTTPS終端
-- IAMロールによるAWSリソースへのアクセス
-- ECSタスク定義に基づくリソース制限
-- CloudWatchによるログ管理
+### ECSへのデプロイ手順
+
+#### 1. 前提条件
+- AWS CLIのインストールと設定
+- Docker CLIのインストール
+- 必要なIAMロールとポリシーの設定
+  - ECSタスク実行ロール
+  - ECSタスクロール（S3アクセス用）
+
+#### 2. AWS認証情報の設定
+```bash
+# AWS CLIの設定
+aws configure
+AWS Access Key ID: [your-access-key]
+AWS Secret Access Key: [your-secret-key]
+Default region name: ap-northeast-1
+Default output format: json
+```
+
+#### 3. ECRリポジトリの作成とプッシュ
+```bash
+# ECRリポジトリ作成
+aws ecr create-repository --repository-name rails-tasks
+
+# リポジトリURLの取得
+export ECR_REPO=$(aws ecr describe-repositories --repository-names rails-tasks --query 'repositories[0].repositoryUri' --output text)
+
+# ECRログイン
+aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REPO
+
+# イメージビルドとプッシュ
+docker build -t rails-tasks .
+docker tag rails-tasks:latest $ECR_REPO:latest
+docker push $ECR_REPO:latest
+```
+
+#### 4. ECSタスク定義の作成
+```bash
+# タスク定義ファイルの作成
+cat > task-definition.json << EOF
+{
+  "family": "rails-tasks",
+  "requiresCompatibilities": ["FARGATE"],
+  "networkMode": "awsvpc",
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::[account-id]:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::[account-id]:role/ecsTaskRole",
+  "containerDefinitions": [{
+    "name": "rails-tasks",
+    "image": "${ECR_REPO}:latest",
+    "portMappings": [{
+      "containerPort": 80,
+      "protocol": "tcp"
+    }],
+    "environment": [
+      {"name": "RAILS_ENV", "value": "production"},
+      {"name": "RAILS_SERVE_STATIC_FILES", "value": "true"},
+      {"name": "RAILS_LOG_TO_STDOUT", "value": "true"}
+    ],
+    "secrets": [
+      {
+        "name": "DATABASE_URL",
+        "valueFrom": "arn:aws:secretsmanager:[region]:[account-id]:secret:DATABASE_URL"
+      },
+      {
+        "name": "RAILS_MASTER_KEY",
+        "valueFrom": "arn:aws:secretsmanager:[region]:[account-id]:secret:RAILS_MASTER_KEY"
+      }
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/rails-tasks",
+        "awslogs-region": "ap-northeast-1",
+        "awslogs-stream-prefix": "ecs"
+      }
+    }
+  }]
+}
+EOF
+
+# タスク定義の登録
+aws ecs register-task-definition --cli-input-json file://task-definition.json
+```
+
+#### 5. ECSサービスの作成
+```bash
+# サービス作成（初回）
+aws ecs create-service \
+  --cluster your-cluster-name \
+  --service-name rails-tasks \
+  --task-definition rails-tasks \
+  --desired-count 1 \
+  --launch-type FARGATE \
+  --network-configuration "awsvpcConfiguration={subnets=[subnet-xxx,subnet-yyy],securityGroups=[sg-zzz],assignPublicIp=ENABLED}" \
+  --load-balancers "targetGroupArn=arn:aws:elasticloadbalancing:[region]:[account-id]:targetgroup/rails-tasks/xxx,containerName=rails-tasks,containerPort=80"
+
+# サービス更新（デプロイ時）
+aws ecs update-service \
+  --cluster your-cluster-name \
+  --service rails-tasks \
+  --task-definition rails-tasks \
+  --force-new-deployment
+```
+
+#### 6. デプロイ後の確認
+```bash
+# サービスステータスの確認
+aws ecs describe-services \
+  --cluster your-cluster-name \
+  --services rails-tasks
+
+# タスクのステータス確認
+aws ecs list-tasks \
+  --cluster your-cluster-name \
+  --service-name rails-tasks
+
+# CloudWatchログの確認
+aws logs get-log-events \
+  --log-group-name /ecs/rails-tasks \
+  --log-stream-name [task-id]
+```
+
+#### 7. スケーリングの設定
+```bash
+# Auto Scalingターゲットの作成
+aws application-autoscaling register-scalable-target \
+  --service-namespace ecs \
+  --scalable-dimension ecs:service:DesiredCount \
+  --resource-id service/your-cluster-name/rails-tasks \
+  --min-capacity 1 \
+  --max-capacity 2
+
+# スケーリングポリシーの設定
+aws application-autoscaling put-scaling-policy \
+  --service-namespace ecs \
+  --scalable-dimension ecs:service:DesiredCount \
+  --resource-id service/your-cluster-name/rails-tasks \
+  --policy-name cpu75-target-tracking-scaling \
+  --policy-type TargetTrackingScaling \
+  --target-tracking-scaling-policy-configuration '{
+    "TargetValue": 75.0,
+    "PredefinedMetricSpecification": {
+        "PredefinedMetricType": "ECSServiceAverageCPUUtilization"
+    }
+  }'
+```
+
+#### トラブルシューティング
+1. デプロイ失敗時の確認ポイント
+   - ECSタスクのステータス
+   - CloudWatchログ
+   - ヘルスチェックの状態
+   - セキュリティグループの設定
+
+2. よくある問題の解決方法
+   - データベース接続エラー → DATABASE_URLの確認
+   - S3アクセスエラー → IAMロールの権限確認
+   - メモリ不足 → ECSタスク定義のメモリ設定を確認
 
 ## 開発ガイドライン
 
