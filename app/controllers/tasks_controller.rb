@@ -1,12 +1,10 @@
 class TasksController < ApplicationController
-  protect_from_forgery unless: -> { request.format.json? }
   before_action :set_task, only: [:show, :edit, :update, :destroy, :complete, :uncomplete]
   before_action :set_tasks, only: [:index, :create, :update, :destroy, :complete, :uncomplete]
 
   def index
     respond_to do |format|
       format.html
-      format.json { render json: @tasks }
       format.turbo_stream
     end
   end
@@ -14,7 +12,7 @@ class TasksController < ApplicationController
   def show
     respond_to do |format|
       format.html
-      format.json { render json: @task }
+      format.turbo_stream
     end
   end
 
@@ -31,11 +29,9 @@ class TasksController < ApplicationController
     respond_to do |format|
       if @task.save
         format.html { redirect_to tasks_path, notice: 'タスクが作成されました。' }
-        format.json { render json: @task, status: :created }
         format.turbo_stream
       else
         format.html { render :index, status: :unprocessable_entity }
-        format.json { render json: { errors: @task.errors }, status: :unprocessable_entity }
         format.turbo_stream { render turbo_stream: turbo_stream.replace('task_form', partial: 'form', locals: { task: @task }) }
       end
     end
@@ -45,11 +41,9 @@ class TasksController < ApplicationController
     respond_to do |format|
       if @task.update(task_params)
         format.html { redirect_to tasks_path, notice: 'タスクが更新されました。' }
-        format.json { render json: @task }
         format.turbo_stream
       else
         format.html { render :edit, status: :unprocessable_entity }
-        format.json { render json: { errors: @task.errors }, status: :unprocessable_entity }
         format.turbo_stream { render turbo_stream: turbo_stream.replace('modal', partial: 'edit', locals: { task: @task }) }
       end
     end
@@ -60,7 +54,6 @@ class TasksController < ApplicationController
 
     respond_to do |format|
       format.html { redirect_to tasks_path, notice: 'タスクが削除されました。' }
-      format.json { head :no_content }
       format.turbo_stream
     end
   end
@@ -70,7 +63,6 @@ class TasksController < ApplicationController
 
     respond_to do |format|
       format.html { redirect_to tasks_path, notice: 'タスクを完了しました。' }
-      format.json { render json: @task }
       format.turbo_stream
     end
   end
@@ -80,7 +72,6 @@ class TasksController < ApplicationController
 
     respond_to do |format|
       format.html { redirect_to tasks_path, notice: 'タスクを未完了に戻しました。' }
-      format.json { render json: @task }
       format.turbo_stream
     end
   end
