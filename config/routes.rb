@@ -1,6 +1,20 @@
 Rails.application.routes.draw do
   root "tasks#index"
   
+  # API routes
+  namespace :api do
+    resources :tasks do
+      member do
+        patch :complete
+        patch :uncomplete
+      end
+      collection do
+        get :completed
+      end
+    end
+  end
+
+  # Web routes
   resources :tasks do
     member do
       patch :complete

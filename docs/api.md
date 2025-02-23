@@ -1,127 +1,144 @@
-# Rails Tasks API仕様書
+# タスク管理API仕様書
 
-## タスク管理API
+## 基本情報
 
-### 1. タスク一覧の取得
+* ベースURL: `/api`
+* レスポンス形式: JSON
+* 文字コード: UTF-8
 
-```bash
-curl -X GET http://localhost:3000/tasks.json
+## エンドポイント一覧
+
+### タスク一覧の取得
+
+```
+GET /api/tasks
 ```
 
-レスポンス例:
+#### クエリパラメータ
+- `sort`: ソート方法（オプション）
+  - `priority`: 優先度順
+  - `due_date`: 期限日順
+  - デフォルト: 作成日時の降順
+
+#### レスポンス例
 ```json
 [
   {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "title": "タスクのタイトル",
-    "description": "タスクの説明",
-    "createdAt": "2025-02-22T12:52:58+09:00",
-    "dueDate": "2025-03-01T17:00:00+09:00",
-    "isCompleted": false,
-    "completedAt": null,
-    "priority": 1
+    "id": 1,
+    "title": "タスク1",
+    "description": "説明文",
+    "priority": "high",
+    "due_date": "2025-03-01",
+    "completed_at": null,
+    "created_at": "2025-02-23T12:00:00.000Z",
+    "updated_at": "2025-02-23T12:00:00.000Z"
   }
 ]
 ```
 
-### 2. タスクの作成
+### タスクの詳細取得
 
-```bash
-curl -X POST http://localhost:3000/tasks.json \
-  -H "Content-Type: application/json" \
-  -d '{
-    "task": {
-      "title": "新しいタスク",
-      "description": "タスクの説明",
-      "due_date": "2025-03-01T17:00:00+09:00",
-      "priority": 1
-    }
-  }'
+```
+GET /api/tasks/:id
 ```
 
-レスポンス例:
+#### レスポンス例
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "title": "新しいタスク",
-  "description": "タスクの説明",
-  "createdAt": "2025-02-22T12:52:58+09:00",
-  "dueDate": "2025-03-01T17:00:00+09:00",
-  "isCompleted": false,
-  "completedAt": null,
-  "priority": 1
+  "id": 1,
+  "title": "タスク1",
+  "description": "説明文",
+  "priority": "high",
+  "due_date": "2025-03-01",
+  "completed_at": null,
+  "created_at": "2025-02-23T12:00:00.000Z",
+  "updated_at": "2025-02-23T12:00:00.000Z"
 }
 ```
 
-### 3. タスクの更新
+### タスクの作成
 
-```bash
-curl -X PATCH http://localhost:3000/tasks/550e8400-e29b-41d4-a716-446655440000.json \
-  -H "Content-Type: application/json" \
-  -d '{
-    "task": {
-      "title": "更新したタスク",
-      "description": "更新した説明",
-      "due_date": "2025-03-01T17:00:00+09:00",
-      "priority": 2
-    }
-  }'
+```
+POST /api/tasks
 ```
 
-レスポンス例:
+#### リクエストボディ
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "title": "更新したタスク",
-  "description": "更新した説明",
-  "createdAt": "2025-02-22T12:52:58+09:00",
-  "dueDate": "2025-03-01T17:00:00+09:00",
-  "isCompleted": false,
-  "completedAt": null,
-  "priority": 2
+  "task": {
+    "title": "新しいタスク",
+    "description": "説明文",
+    "due_date": "2025-03-01",
+    "priority": "high"
+  }
 }
 ```
 
-### 4. タスクの削除
+#### レスポンス
+- 成功時: 201 Created
+- エラー時: 422 Unprocessable Entity
 
-```bash
-curl -X DELETE http://localhost:3000/tasks/550e8400-e29b-41d4-a716-446655440000.json
+### タスクの更新
+
+```
+PATCH /api/tasks/:id
 ```
 
-レスポンス: 204 No Content
-
-### 5. タスクの完了状態の変更
-
-完了:
-```bash
-curl -X PATCH http://localhost:3000/tasks/550e8400-e29b-41d4-a716-446655440000/complete.json
-```
-
-未完了:
-```bash
-curl -X PATCH http://localhost:3000/tasks/550e8400-e29b-41d4-a716-446655440000/uncomplete.json
-```
-
-レスポンス例:
+#### リクエストボディ
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "title": "タスクのタイトル",
-  "description": "タスクの説明",
-  "createdAt": "2025-02-22T12:52:58+09:00",
-  "dueDate": "2025-03-01T17:00:00+09:00",
-  "isCompleted": true,
-  "completedAt": "2025-02-22T13:00:00+09:00",
-  "priority": 1
+  "task": {
+    "title": "更新後のタイトル",
+    "description": "更新後の説明文"
+  }
 }
 ```
 
-## レスポンスコード
+#### レスポンス
+- 成功時: 200 OK
+- エラー時: 422 Unprocessable Entity
 
-- 200 OK: リクエスト成功
-- 201 Created: リソース作成成功
-- 204 No Content: リソース削除成功
-- 400 Bad Request: パラメータが不正
-- 404 Not Found: リソースが見つからない
-- 422 Unprocessable Entity: バリデーションエラー
-- 500 Internal Server Error: サーバーエラー
+### タスクの削除
+
+```
+DELETE /api/tasks/:id
+```
+
+#### レスポンス
+- 成功時: 204 No Content
+
+### タスクの完了
+
+```
+PATCH /api/tasks/:id/complete
+```
+
+#### レスポンス
+- 成功時: 200 OK
+
+### タスクの未完了への変更
+
+```
+PATCH /api/tasks/:id/uncomplete
+```
+
+#### レスポンス
+- 成功時: 200 OK
+
+## エラーレスポンス
+
+### バリデーションエラー (422 Unprocessable Entity)
+```json
+{
+  "errors": {
+    "title": ["を入力してください"],
+    "priority": ["は不正な値です"]
+  }
+}
+```
+
+### リソースが見つからない (404 Not Found)
+```json
+{
+  "error": "Couldn't find Task with 'id'=1"
+}
