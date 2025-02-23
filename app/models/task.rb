@@ -1,59 +1,58 @@
 class Task < ApplicationRecord
   before_create :set_uuid
+  before_save :sync_completion_status
 
   validates :title, presence: true
-  validates :priority, inclusion: { in: 0..2 }
 
-  scope :ordered_by_priority, -> { order(priority: :desc, created_at: :desc) }
-  scope :ordered_by_due_date, -> { order(due_date: :asc, created_at: :desc) }
-  scope :completed, -> { where(is_completed: true) }
-  scope :uncompleted, -> { where(is_completed: false) }
+  enum :priority, {
+    low: 0,
+    medium: 1,
+    high: 2
+  }, default: :medium
+
+  scope :ordered_by_priority, -> { 
+    order(priority: :desc, created_at: :desc)
+  }
+
+  scope :ordered_by_due_date, -> { 
+    order(Arel.sql("CASE WHEN due_date IS NULL THEN 1 ELSE 0 END, due_date ASC, created_at DESC"))
+  }
+
+  scope :completed, -> { 
+    where.not(completed_at: nil)
+  }
+
+  scope :uncompleted, -> { 
+    where(completed_at: nil)
+  }
 
   def complete!
-    update!(
-      is_completed: true,
-      completed_at: Time.current
-    )
+    update!(completed_at: Time.current)
   end
 
   def uncomplete!
-    update!(
-      is_completed: false,
-      completed_at: nil
-    )
+    update!(completed_at: nil)
+  end
+
+  def completed?
+    completed_at.present?
   end
 
   def as_json(options = {})
     super(options.merge(
-      methods: [:priority_text],
-      except: [:updated_at],
+      except: [:updated_at, :is_completed],
       include: {}
     ))
-  end
-
-  def priority_text
-    case priority
-    when 0 then 'low'
-    when 1 then 'medium'
-    when 2 then 'high'
-    end
-  end
-
-  def completed?
-    is_completed
-  end
-
-  def self.priority_values
-    {
-      low: 0,
-      medium: 1,
-      high: 2
-    }
   end
 
   private
 
   def set_uuid
     self.id = SecureRandom.uuid if id.nil?
+  end
+
+  def sync_completion_status
+    self.is_completed = completed_at.present?
+    true
   end
 end
