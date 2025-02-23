@@ -6,6 +6,8 @@ class Task < ApplicationRecord
 
   scope :ordered_by_priority, -> { order(priority: :desc, created_at: :desc) }
   scope :ordered_by_due_date, -> { order(due_date: :asc, created_at: :desc) }
+  scope :completed, -> { where(is_completed: true) }
+  scope :uncompleted, -> { where(is_completed: false) }
 
   def complete!
     update!(
@@ -23,7 +25,7 @@ class Task < ApplicationRecord
 
   def as_json(options = {})
     super(options.merge(
-      methods: [],
+      methods: [:priority_text],
       except: [:updated_at],
       include: {}
     ))
@@ -35,6 +37,18 @@ class Task < ApplicationRecord
     when 1 then 'medium'
     when 2 then 'high'
     end
+  end
+
+  def completed?
+    is_completed
+  end
+
+  def self.priority_values
+    {
+      low: 0,
+      medium: 1,
+      high: 2
+    }
   end
 
   private
