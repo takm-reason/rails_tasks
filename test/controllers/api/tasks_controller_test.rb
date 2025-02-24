@@ -8,6 +8,21 @@ class Api::TasksControllerTest < ActionDispatch::IntegrationTest
   test "should get index" do
     get api_tasks_url, as: :json
     assert_response :success
+    assert_json_structure response.body
+  end
+
+  test "should get index sorted by priority" do
+    get api_tasks_url(sort: 'priority'), as: :json
+    assert_response :success
+    tasks = JSON.parse(response.body)
+    assert_equal Task.ordered_by_priority.pluck(:id), tasks.map { |t| t['id'] }
+  end
+
+  test "should get index sorted by due date" do
+    get api_tasks_url(sort: 'due_date'), as: :json
+    assert_response :success
+    tasks = JSON.parse(response.body)
+    assert_equal Task.ordered_by_due_date.pluck(:id), tasks.map { |t| t['id'] }
   end
 
   test "should create task" do
@@ -18,11 +33,13 @@ class Api::TasksControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :created
+    assert_json_structure response.body
   end
 
   test "should show task" do
     get api_task_url(@task), as: :json
     assert_response :success
+    assert_json_structure response.body
   end
 
   test "should update task" do
@@ -30,6 +47,8 @@ class Api::TasksControllerTest < ActionDispatch::IntegrationTest
           params: { task: { title: "Updated Task" } },
           as: :json
     assert_response :success
+    assert_json_structure response.body
+    assert_equal "Updated Task", @task.reload.title
   end
 
   test "should destroy task" do
@@ -43,13 +62,15 @@ class Api::TasksControllerTest < ActionDispatch::IntegrationTest
   test "should complete task" do
     patch complete_api_task_url(@task), as: :json
     assert_response :success
+    assert_json_structure response.body
     assert @task.reload.completed?
   end
 
   test "should uncomplete task" do
-    @task.update!(completed_at: Time.current)
+    @task.update!(completed_at: Time.current, is_completed: true)
     patch uncomplete_api_task_url(@task), as: :json
     assert_response :success
+    assert_json_structure response.body
     refute @task.reload.completed?
   end
 
@@ -81,5 +102,22 @@ class Api::TasksControllerTest < ActionDispatch::IntegrationTest
     json_response = JSON.parse(response.body)
     assert json_response["errors"].present?
     assert json_response["errors"]["priority"].present?
+  end
+
+  private
+
+  def assert_json_structure(json_string)
+    json = JSON.parse(json_string)
+    [json].flatten.each do |task|
+      assert_includes task.keys, 'id'
+      assert_includes task.keys, 'title'
+      assert_includes task.keys, 'description'
+      assert_includes task.keys, 'priority'
+      assert_includes task.keys, 'priority_text'
+      assert_includes task.keys, 'due_date'
+      assert_includes task.keys, 'completed_at'
+      assert_includes task.keys, 'is_completed'
+      assert_includes task.keys, 'created_at'
+    end
   end
 end
