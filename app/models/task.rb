@@ -40,7 +40,7 @@ class Task < ApplicationRecord
   end
 
   def completed?
-    is_completed
+    self[:is_completed]
   end
 
   def self.priority_values

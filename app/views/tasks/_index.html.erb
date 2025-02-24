@@ -1,6 +1,6 @@
 <% @tasks.each do |task| %>
-  <div class="task-item <%= 'completed' if task.is_completed %>" id="task_<%= task.id %>">
-    <div class="title <%= 'completed-title' if task.is_completed %>">
+  <div class="task-item <%= 'completed' if task.completed? %>" id="task_<%= task.id %>">
+    <div class="title <%= 'completed-title' if task.completed? %>">
       <%= task.title %>
     </div>
 
@@ -17,7 +17,7 @@
     </div>
 
     <div class="task-actions">
-      <% if task.is_completed %>
+      <% if task.completed? %>
         <%= button_to '未完了に戻す', 
           uncomplete_task_path(task), 
           method: :patch,
