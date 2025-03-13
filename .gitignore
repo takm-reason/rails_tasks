@@ -34,3 +34,7 @@
 # Ignore master key for decrypting credentials and more.
 /config/master.key
 config/initializers/aws.rb
+
+# Ignore AWS resource files except template
+aws_resources.*.yml
+!aws_resources.template.yml

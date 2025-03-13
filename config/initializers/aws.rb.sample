@@ -9,20 +9,22 @@ Rails.application.config.before_initialize do
     # IAMロールを使用するため、credentialsは設定不要
   )
 
+  # AWSリソース設定の読み込み
+  aws_resources = YAML.load_file(Rails.root.join("aws_resources.#{Rails.env}.yml"))
+
   # アプリケーションのAWS関連設定を一元管理
   Rails.application.config.x.aws = {
-    region: region,
+    region: aws_resources.dig('aws', 'region'),
 
     # S3設定
     s3: {
-      # 環境変数から取得するか、直接バケット名を設定
-      bucket: ENV.fetch('S3_BUCKET', 'your-bucket-name')
+      bucket: aws_resources.dig('storage', 'bucket_name')
     },
 
     # RDS設定
     rds: {
       # DATABASE_URLの形式: postgresql://user:pass@endpoint:5432/dbname
-      database_url: ENV.fetch('DATABASE_URL', nil)
+      database_url: "postgresql://#{aws_resources.dig('database', 'username')}:#{aws_resources.dig('database', 'password')}@#{aws_resources.dig('database', 'host')}:#{aws_resources.dig('database', 'port')}/#{aws_resources.dig('database', 'database')}"
     },
 
     # ALB設定

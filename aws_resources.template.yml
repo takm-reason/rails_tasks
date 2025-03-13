@@ -1,0 +1,25 @@
+database:
+  host: your-rds-endpoint
+  port: 5432
+  database: postgres
+  username: postgres
+  password: your-database-password
+storage:
+  bucket_name: your-s3-bucket-name
+  region: ap-northeast-1
+  endpoint: https://s3.ap-northeast-1.amazonaws.com
+  force_path_style: false
+aws:
+  region: ap-northeast-1
+  vpc_id: your-vpc-id
+  account_id: 'your-aws-account-id'
+ecs:
+  cluster_name: your-ecs-cluster-name
+  service_name: your-ecs-service-name
+  task_definition_arn: your-task-definition-arn
+  container_name: web
+  log_group_name: your-cloudwatch-log-group
+application:
+  name: your-application-name
+  environment: development
+  load_balancer_dns: your-alb-dns
